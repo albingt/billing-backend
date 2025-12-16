@@ -9,22 +9,26 @@ export const AuthProvider = ({ children }) => {
 
     const navigate = useNavigate()
     const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [authenticated, setAuthenticated] = useState(false)
 
     useEffect(() => {
-        const token = sessionStorage.getItem('tk')
+        const checkAuth = async () => {
+            const token = sessionStorage.getItem('tk')
 
-        if (token) {
-            setAuthenticated(true)
-            userProfile(token)
-            navigate('/dashboard')
-        } else {
-            if (window.location.pathname !== '/') {
-                navigate('/')
+            if (token) {
+                setAuthenticated(true)
+                await userProfile(token)
+            } else {
+                setLoading(false)
+                if (window.location.pathname !== '/') {
+                    navigate('/')
+                }
             }
         }
-    }, [])
+
+        checkAuth()
+    }, [navigate])
 
     const login = async (formData) => {
         try {
@@ -38,7 +42,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(data)
                 setAuthenticated(true)
                 sessionStorage.setItem('tk', token)
-                navigate('/dashboard')
+                data.role === 'admin' ? navigate('/dashboard') : navigate('/billing')
             } else {
                 toast.error(result.error.error || 'Login failed')
             }
@@ -59,10 +63,15 @@ export const AuthProvider = ({ children }) => {
                 setAuthenticated(true)
             } else {
                 toast.error('Session expired, please login again!')
+                sessionStorage.removeItem('tk')
+                setAuthenticated(false)
+                setUser(null)
                 navigate('/')
             }
         } catch (error) {
             console.log(error);
+        } finally {
+            setLoading(false)
         }
     }
 

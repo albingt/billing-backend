@@ -72,14 +72,6 @@ const Login = () => {
                     </div>
                 </div>
     
-                {/* Remember & Forgot */}
-                <div className='flex items-center justify-end text-sm'>
-                    <label className='flex items-center space-x-2 cursor-pointer'>
-                        <input type="checkbox" className='w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500' />
-                        <span className='text-gray-600'>Remember me</span>
-                    </label>
-                </div>
-    
                 {/* Submit Button */}
                 <button
                     onClick={handleSubmit}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { LayoutDashboard, LogOut, User2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react'
+import { FileText, LayoutDashboard, LogOut, Package, Ticket, TrendingUp, User2, Users } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,38 +17,43 @@ const Sidebar = () => {
         },
         {
             id: 'products',
-            icon: <LayoutDashboard size={20} />,
+            icon: <Package size={20} />,
             label: 'Products',
             path: '/products'
         },
         {
-            id: 'users',
-            icon: <LayoutDashboard size={20} />,
-            label: 'Users',
-            path: '/users'
-        },
-        {
             id: 'sales',
-            icon: <LayoutDashboard size={20} />,
+            icon: <TrendingUp size={20} />,
             label: 'Sales',
             path: '/sales'
         },
-    ]
-
-    const usernavitems = [
         {
-            id: 'dashboard',
-            icon: <LayoutDashboard size={20} />,
-            label: 'Dashboard',
-            path: '/dashboard'
+            id: 'vouchers',
+            icon: <Ticket size={20} />,
+            label: 'Vouchers',
+            path: '/vouchers'
         },
         {
-            id: 'billing',
-            icon: <LayoutDashboard size={20} />,
-            label: 'Billing',
-            path: '/billing'
-        }
+            id: 'invoices',
+            icon: <FileText size={20} />,
+            label: 'Invoices',
+            path: '/invoices'
+        },
+        {
+            id: 'users',
+            icon: <Users size={20} />,
+            label: 'Users',
+            path: '/users'
+        },
     ]
+
+    useEffect(() => {
+        const currentPath = location.pathname;
+        const currentItem = adminnavitems.find(item => item.path === currentPath);
+        if (currentItem) {
+            setActiveItem(currentItem.id);
+        }
+    }, [location.pathname]);
 
     const handleNavigation = (item) => {
         setActiveItem(item.id);
@@ -65,13 +70,7 @@ const Sidebar = () => {
                 <div
                     key={index}
                     onClick={() => handleNavigation(item)}
-                    className={`
-                        mb-2 p-3 rounded-lg cursor-pointer transition-all duration-200
-                        ${isActive
-                            ? 'bg-blue-700 shadow-lg'
-                            : 'hover:bg-blue-800/50'
-                        }
-                    `}
+                    className='mb-2 p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-blue-800/50'
                 >
                     <div className="flex items-center">
                         <span className={`${isActive ? 'text-white' : 'text-blue-300'}`}>
@@ -114,7 +113,7 @@ const Sidebar = () => {
                             background: #3B82F6;
                         }
                     `}</style>
-                    {RenderSiderBarOptions(user?.role === 'admin' ? adminnavitems : usernavitems)}
+                    {RenderSiderBarOptions(adminnavitems)}
                 </div>
                 <div className='p-4 mt-auto border-t border-blue-700/50'>
                     <div className='flex items-center justify-between'>

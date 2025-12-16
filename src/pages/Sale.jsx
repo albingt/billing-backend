@@ -22,7 +22,7 @@ const Sale = () => {
         params.append('page', pagination.currentPage.toString());
         params.append('limit', pagination.limit.toString());
         if (debouncedSearch.trim()) params.append('searchquery', debouncedSearch.trim());
-        
+
         return params.toString();
     }, [pagination.currentPage, pagination.limit, debouncedSearch]);
 
@@ -67,6 +67,14 @@ const Sale = () => {
         return () => clearTimeout(timeout);
     }, [searchTerm]);
 
+    const formatDecimal = (value) => {
+        if (value === null || value === undefined) return '0.00';
+        return Number(value).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+    };
+
     return (
         <>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -102,7 +110,6 @@ const Sale = () => {
                                     <tr>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">#</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">SKU</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Selling Price</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Cost Price</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Total Sold</th>
@@ -113,26 +120,25 @@ const Sale = () => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {isLoading ? (
-                                        <tr><td colSpan={9} className="text-center py-3">Loading...</td></tr>
+                                        <tr><td colSpan={8} className="text-center py-3">Loading...</td></tr>
                                     ) : data?.length > 0 ? (
                                         data.map((row, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-3 py-1.5">
                                                     {(pagination.currentPage - 1) * pagination.limit + index + 1}
                                                 </td>
-                                                <td className="px-3 py-1.5">{row.name}</td>
-                                                <td className="px-3 py-1.5">{row.sku_code}</td>
-                                                <td className="px-3 py-1.5">{row.selling_price}</td>
-                                                <td className="px-3 py-1.5">{row.cost_price}</td>
+                                                <td className="px-3 py-1.5">{row.product_name}</td>
+                                                <td className="px-3 py-1.5">{formatDecimal(row.selling_price)}</td>
+                                                <td className="px-3 py-1.5">{formatDecimal(row.cost_price)}</td>
                                                 <td className="px-3 py-1.5">{row.total_sold ?? 0}</td>
-                                                <td className="px-3 py-1.5">{row.total_revenue ?? 0}</td>
-                                                <td className="px-3 py-1.5">{row.total_cost ?? 0}</td>
+                                                <td className="px-3 py-1.5">{row.revenue ?? 0}</td>
+                                                <td className="px-3 py-1.5">{row.cost ?? 0}</td>
                                                 <td className="px-3 py-1.5">{row.profit ?? 0}</td>
                                             </tr>
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={4} className="text-center py-3 text-gray-500">
+                                            <td colSpan={8} className="text-center py-3 text-gray-500">
                                                 No data available
                                             </td>
                                         </tr>

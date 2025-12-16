@@ -1,25 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Download, Edit, Plus, RefreshCcw, Search, Trash2 } from 'lucide-react';
-import { addProductAPI, allProductsAPI, deleteProductAPI, editProductAPI } from '../services/productAPI';
+import { addVoucherAPI, deleteVoucherAPI, fetchVoucherAPI } from '../services/voucherAPI';
+import { Plus, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import ModalComponent from '../components/ModalComponent';
-import toast from "react-hot-toast"
+import useDebounce from '../hooks/useDebounce';
+import toast from 'react-hot-toast';
 
-const Product = () => {
+const Voucher = () => {
 
     const [data, setData] = useState([])
-    const [selectedProduct, setSelectedProduct] = useState({
+    const [selectedVoucher, setSelectedVoucher] = useState({
         name: '',
-        sku_code: '',
-        selling_price: '',
-        cost_price: '',
         discount_percentage: '',
-        quantity: ''
     })
     const [isLoading, setIsLoading] = useState(false);
     const [openModal, setOpenModal] = useState(false);
-    const [modalMode, setModalMode] = useState('add'); //'add' | 'edit' | 'delete'
+    const [modalMode, setModalMode] = useState('add'); //'add', 'delete'
     const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
 
     const [pagination, setPagination] = useState({
         total: 0,
@@ -28,14 +24,16 @@ const Product = () => {
         limit: 10,
     });
 
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
         params.append('page', pagination.currentPage.toString());
         params.append('limit', pagination.limit.toString());
-        if (debouncedSearch.trim()) params.append('searchquery', debouncedSearch.trim());
+        if (debouncedSearchTerm.trim()) params.append('searchquery', debouncedSearchTerm.trim());
 
         return params.toString();
-    }, [pagination.currentPage, pagination.limit, debouncedSearch])
+    }, [pagination.currentPage, pagination.limit, debouncedSearchTerm])
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -46,7 +44,7 @@ const Product = () => {
             if (!token) return
 
             const headers = { Authorization: `Bearer ${token}` };
-            const result = await allProductsAPI(queryParams, headers);
+            const result = await fetchVoucherAPI(queryParams, headers);
 
             if (result.success) {
                 setData(result.data);
@@ -72,73 +70,32 @@ const Product = () => {
         fetchData()
     }, [queryParams]);
 
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            setDebouncedSearch(searchTerm);
-        }, 500);
-
-        return () => clearTimeout(timeout);
-    }, [searchTerm]);
-
-    useEffect(() => {
-        const cost = parseFloat(selectedProduct.cost_price);
-        const selling = parseFloat(selectedProduct.selling_price);
-
-        if (!isNaN(cost) && !isNaN(selling) && cost > 0) {
-            if (selling >= cost) {
-                setSelectedProduct(prev => ({ ...prev, discount_percentage: '0' }));
-            } else {
-                const discount = ((cost - selling) / cost) * 100;
-                setSelectedProduct(prev => ({
-                    ...prev,
-                    discount_percentage: discount.toFixed(2)
-                }));
-            }
-        } else {
-            setSelectedProduct(prev => ({ ...prev, discount_percentage: '' }));
-        }
-    }, [selectedProduct.cost_price, selectedProduct.selling_price]);
-
     const openAddModal = () => {
         setModalMode('add');
-        setSelectedProduct({
+        setSelectedVoucher({
             name: '',
-            sku_code: '',
-            selling_price: '',
-            cost_price: '',
             discount_percentage: '',
-            quantity: ''
         })
         setOpenModal(true);
     };
 
-    const openEditModal = (product) => {
-        setModalMode('edit');
-        setSelectedProduct(product);
-        setOpenModal(true);
-    };
-
-    const openDeleteModal = (product) => {
+    const openDeleteModal = (Voucher) => {
         setModalMode('delete');
-        setSelectedProduct(product);
+        setSelectedVoucher(Voucher);
         setOpenModal(true);
     };
 
     const closeModal = () => {
         setOpenModal(false);
-        setSelectedProduct({
+        setSelectedVoucher({
             name: '',
-            sku_code: '',
-            selling_price: '',
-            cost_price: '',
             discount_percentage: '',
-            quantity: ''
         })
     };
 
-    const handleAddProduct = async () => {
+    const handleAddVoucher = async () => {
 
-        if (!selectedProduct.name || !selectedProduct.sku_code || !selectedProduct.selling_price || !selectedProduct.cost_price || !selectedProduct.discount_percentage || !selectedProduct.quantity) {
+        if (!selectedVoucher.name || !selectedVoucher.discount_percentage) {
             toast.error("All fields are required");
             return;
         }
@@ -147,14 +104,10 @@ const Product = () => {
             setIsLoading(true);
             const token = sessionStorage.getItem('tk');
 
-            const apiCall = modalMode === 'add'
-                ? addProductAPI(selectedProduct, { Authorization: `Bearer ${token}` })
-                : editProductAPI(selectedProduct.id, selectedProduct, { Authorization: `Bearer ${token}` });
-
-            const result = await apiCall;
+            const result = await addVoucherAPI(selectedVoucher, { Authorization: `Bearer ${token}` })
 
             if (result.success) {
-                toast.success(modalMode === 'add' ? "Product added successfully" : "Product updated successfully");
+                toast.success("Voucher added successfully");
                 closeModal();
                 fetchData();
             } else {
@@ -168,19 +121,19 @@ const Product = () => {
         }
     }
 
-    const handleDeleteProduct = async () => {
+    const handleDeleteVoucher = async () => {
         try {
             setIsLoading(true)
 
             const token = sessionStorage.getItem('tk')
 
-            const result = await deleteProductAPI(selectedProduct.id, { authorization: `Bearer ${token}` });
+            const result = await deleteVoucherAPI(selectedVoucher.id, { authorization: `Bearer ${token}` });
             if (result.success) {
-                toast.success("Product deleted successfully");
+                toast.success("Voucher deleted successfully");
                 closeModal();
                 fetchData();
             } else {
-                toast.error(result.error || "Failed to delete product");
+                toast.error(result.error || "Failed to delete Voucher");
             }
         } catch (error) {
             console.log(error);
@@ -193,23 +146,20 @@ const Product = () => {
     return (
         <>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h2 className="text-xl font-bold text-blue-800">Products</h2>
+                <h2 className="text-xl font-bold text-blue-800">Vouchers</h2>
                 <div className="flex flex-wrap gap-2">
                     <div className="relative w-60">
                         <input
                             type="text"
-                            placeholder="Search by name or product code"
+                            placeholder="Search..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
                             className="w-full h-8 text-xs pl-10 pr-4 py-2.5 rounded-lg shadow outline-none"
                         />
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                     </div>
                     <button onClick={openAddModal} className="px-3 py-1.5 h-8 bg-blue-700 text-white text-sm rounded-md hover:bg-blue-600 flex items-center border border-blue-600 shadow-sm">
-                        <Plus size={16} className="mr-2" />Add Product
-                    </button>
-                    <button className="px-3 py-1.5 h-8 bg-blue-700 text-white text-sm rounded-md hover:bg-blue-600 flex items-center border border-blue-600 shadow-sm">
-                        <Download size={16} className="mr-2" />Excel
+                        <Plus size={16} className="mr-2" />Add Voucher
                     </button>
                     <button onClick={fetchData} className="px-3 py-1.5 h-8 bg-blue-700 text-white text-sm rounded-md hover:bg-blue-600 flex items-center border border-blue-600 shadow-sm"
                     >
@@ -222,16 +172,12 @@ const Product = () => {
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="flex flex-col" style={{ height: 'calc(98vh - 90px)' }}>
                         <div className="overflow-auto grow">
-                            <table className="w-full divide-y divide-gray-200 text-xs" aria-label="Product Table">
+                            <table className="w-full divide-y divide-gray-200 text-xs" aria-label="Voucher Table">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">#</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Name</th>
-                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">Product Code</th>
-                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">Selling Price</th>
-                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">Buying Price</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Discount</th>
-                                        <th className="px-3 py-2 text-left text-gray-500 font-medium">Quantity</th>
                                         <th className="px-3 py-2 text-left text-gray-500 font-medium">Actions</th>
                                     </tr>
                                 </thead>
@@ -239,32 +185,22 @@ const Product = () => {
                                     {isLoading ? (
                                         <tr>
                                             <td
-                                                colSpan={7}
+                                                colSpan={4}
                                                 className="px-3 py-1.5 text-center text-sm text-gray-500"
                                             >
                                                 Loading...
                                             </td>
                                         </tr>
                                     ) : data?.length > 0 ? (
-                                        data.map((product, index) => (
+                                        data.map((voucher, index) => (
                                             <tr key={index} className="hover:bg-gray-50">
                                                 <td className="px-3 py-1.5">{(pagination.currentPage - 1) * pagination.limit + index + 1}</td>
-                                                <td className="px-3 py-1.5">{product.name || '-'}</td>
-                                                <td className="px-3 py-1.5">{product.sku_code || '-'}</td>
-                                                <td className="px-3 py-1.5">{product.selling_price || '-'}</td>
-                                                <td className="px-3 py-1.5">{product.cost_price || '-'}</td>
-                                                <td className="px-3 py-1.5">{product.discount_percentage || '-'}%</td>
-                                                <td className="px-3 py-1.5">{product.quantity || '-'}</td>
+                                                <td className="px-3 py-1.5">{voucher.name || '-'}</td>
+                                                <td className="px-3 py-1.5">{voucher.discount_percentage || '-'}%</td>
                                                 <td className="px-3 py-1.5">
-                                                    <button onClick={(e) => openEditModal(product)}
-                                                        className="mr-2 text-blue-600"
-                                                        aria-label={`Edit ${product.name}`}
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </button>
-                                                    <button onClick={(e) => openDeleteModal(product)}
+                                                    <button onClick={(e) => openDeleteModal(voucher)}
                                                         className="text-red-600"
-                                                        aria-label={`Delete ${product.name}`}
+                                                        aria-label={`Delete ${voucher.name}`}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </button>
@@ -274,7 +210,7 @@ const Product = () => {
                                     ) : (
                                         <tr>
                                             <td
-                                                colSpan={7}
+                                                colSpan={4}
                                                 className="px-3 py-1.5 text-center text-sm text-gray-500"
                                             >
                                                 No data available
@@ -334,21 +270,20 @@ const Product = () => {
 
             <ModalComponent
                 isOpen={openModal} onClose={closeModal} heading={
-                    modalMode === 'add' ? 'Add New Product' :
-                        modalMode === 'edit' ? 'Edit Product' : 'Remove Product'
+                    modalMode === 'add' ? 'Add New Voucher' : 'Remove Voucher'
                 }
             >
                 {modalMode === 'delete' ? (
                     <div className="space-y-6">
                         <p className="text-gray-700">
-                            Are you sure you want to delete <strong>{selectedProduct.name}</strong>? This action cannot be undone.
+                            Are you sure you want to delete <strong>{selectedVoucher.name}</strong>? This action cannot be undone.
                         </p>
                         <div className="flex justify-end space-x-3">
                             <button onClick={closeModal} className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
                                 Cancel
                             </button>
-                            <button onClick={handleDeleteProduct} className="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                                Delete Product
+                            <button onClick={handleDeleteVoucher} className="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                Delete Voucher
                             </button>
                         </div>
                     </div>
@@ -358,66 +293,22 @@ const Product = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                             <input
                                 type="text"
-                                value={selectedProduct.name}
-                                onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+                                value={selectedVoucher.name}
+                                onChange={(e) => setSelectedVoucher({ ...selectedVoucher, name: e.target.value.toUpperCase() })}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Shirt"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Product Code</label>
-                            <input
-                                type="text"
-                                value={selectedProduct.sku_code}
-                                onChange={(e) => setSelectedProduct({ ...selectedProduct, sku_code: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="#001"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price</label>
-                            <input
-                                type="text"
-                                value={selectedProduct.selling_price}
-                                onChange={(e) => setSelectedProduct({ ...selectedProduct, selling_price: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="$20.00"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Buying Price</label>
-                            <input
-                                type="text"
-                                value={selectedProduct.cost_price}
-                                onChange={(e) => setSelectedProduct({ ...selectedProduct, cost_price: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="$20.00"
+                                placeholder="FLAT100"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Discount Percentage
-                                <span className="text-xs text-gray-500 ml-2">(Auto-calculated)</span>
                             </label>
                             <input
                                 type="text"
-                                value={selectedProduct.discount_percentage
-                                    ? `${selectedProduct.discount_percentage}%`
-                                    : ''
-                                }
-                                readOnly
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                                placeholder="Auto-calculated"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                            <input
-                                type="text"
-                                value={selectedProduct.quantity}
-                                onChange={(e) => setSelectedProduct({ ...selectedProduct, quantity: e.target.value })}
+                                value={selectedVoucher.discount_percentage}
+                                onChange={(e) => setSelectedVoucher({ ...selectedVoucher, discount_percentage: e.target.value })}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="120"
+                                placeholder='10%'
                             />
                         </div>
 
@@ -425,8 +316,8 @@ const Product = () => {
                             <button onClick={closeModal} className="px-5 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
                                 Cancel
                             </button>
-                            <button onClick={handleAddProduct} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                {modalMode === 'add' ? 'Add Product' : 'Update'}
+                            <button onClick={handleAddVoucher} className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Add Voucher
                             </button>
                         </div>
                     </div>
@@ -436,4 +327,4 @@ const Product = () => {
     )
 }
 
-export default Product
+export default Voucher
